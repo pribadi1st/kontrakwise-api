@@ -11,6 +11,9 @@ class User(BaseModel):
     class Config:
         from_attributes = True
 
+class UserEmailResponse(BaseModel):
+    email: EmailStr
+
 class UserRegisterModel(BaseModel):
     email: EmailStr
     password: str

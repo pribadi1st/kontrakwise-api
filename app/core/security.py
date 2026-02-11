@@ -20,3 +20,13 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_JWT_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+def decode_access_token(token: str | None = None):
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.SECRET_JWT_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+        
