@@ -16,8 +16,9 @@ from typing_extensions import Self
 
 class Settings(BaseSettings):
     # 1. Project Metadata
-    PROJECT_NAME: str = "Contracts API"
-    VERSION: str = "0.1.0"
+    PROJECT_NAME: str = "Kontrakwise API"
+    PROJECT_DESCRIPTION: str = "API for kontrakwise application"
+    PROJECT_VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
 
     # 2. Database Configuration
@@ -27,6 +28,11 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "password"
     POSTGRES_DB: str = "contracts_db"
     POSTGRES_PORT: int = 5432
+
+    # JWT_KEY
+    SECRET_JWT_KEY: str
+    EXPIRE_JWT_KEY: int = 60 * 60 * 24 * 7
+    ALGORITHM: str = "HS256"
 
     @computed_field
     @property
