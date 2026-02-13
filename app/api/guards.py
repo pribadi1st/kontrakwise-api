@@ -15,6 +15,11 @@ def get_current_user(
     db: Session = Depends(get_db),
     token: str = Depends(reusable_oauth2)
 ) -> UserModel:
+    if not token: 
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authenticated",
+        )
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(

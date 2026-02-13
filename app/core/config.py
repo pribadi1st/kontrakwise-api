@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     EXPIRE_JWT_KEY: int = 60 * 60 * 24 * 7
     ALGORITHM: str = "HS256"
 
+    # PINECONE
+    PINECONE_API_KEY: str
+    PINECONE_API_ENV: str = "us-east-1"
+    PINECONE_API_INDEX: str
+
+    # OPENAI
+    GEMINI_API_KEY: str
+
     @computed_field
     @property
     def DATABASE_URL(self) -> str:

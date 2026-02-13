@@ -17,4 +17,7 @@ dependencies = [
     "pyjwt>=2.11.0",
     "pwdlib[argon2]>=0.3.0",
     "psycopg>=3.3.2",
+    "pinecone>=8.0.1",
+    "pymupdf>=1.27.1",
+    "google-genai>=1.63.0",
 ]
