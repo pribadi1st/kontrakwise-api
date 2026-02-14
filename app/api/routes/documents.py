@@ -1,10 +1,10 @@
 from typing import Annotated
 from fastapi import APIRouter, UploadFile, File, Form, Depends
+from fastapi.responses import FileResponse
 from app.core.db import get_db
 from sqlalchemy.orm import Session
 from app.migrations.users import User as UserModel
 from app.api.guards import get_current_user
-from app.models.documents import DocumentUpload
 from app.servies.documents_service import DocumentService
 
 router = APIRouter()
@@ -31,3 +31,13 @@ async def upload_document(
 ):
     await document_service.upload_document(current_user.id, file, filename)
     return {"detail": "success"}
+
+@router.get("/{document_id}/download")
+def get_document(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    document_id: int,
+    document_service: DocumentService = Depends(init_document_service)
+):
+    doc = document_service.get_document_detail(current_user.id, document_id)
+    path = f"./{doc.file_path}"
+    return FileResponse(path=path, media_type="application/pdf", filename=doc.filename)

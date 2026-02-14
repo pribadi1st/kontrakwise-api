@@ -8,6 +8,9 @@ import pymupdf
 from app.core.db import get_db
 from app.core.embedding_client import embedding_client
 from app.core.pinecone_client import pinecone_client
+from app.models.documents import DocumentResponse
+from sqlalchemy import select
+from fastapi import HTTPException
 
 class DocumentService:
     def __init__(self, db: Session = Depends(get_db)):
@@ -15,7 +18,20 @@ class DocumentService:
         self.upload_path = Path("./storage")
 
     def get_documents(self, user_id: int, skip: int = 0, limit: int = 100):
-        return self.db.query(DocumentModel).filter(DocumentModel.user_id == user_id).limit(limit).offset(skip).all()
+        stmt = select(DocumentModel.id, DocumentModel.filename, DocumentModel.created_at).filter(
+            DocumentModel.user_id == user_id
+        ).limit(limit).offset(skip)
+        result = self.db.execute(stmt).all()
+        return [DocumentResponse(id=row.id, filename=row.filename, created_at=row.created_at) for row in result]
+
+    def get_document_detail(self, user_id: int, document_id: int):
+        doc = self.db.query(DocumentModel).filter(
+            DocumentModel.user_id == user_id,
+            DocumentModel.id == document_id
+        ).first()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return doc
 
     async def upload_document(self, user_id: int, file: UploadFile, filename: str):
         db_document = DocumentModel(
