@@ -16,12 +16,11 @@ def init_document_service(db: Session = Depends(get_db)):
 def get_documents(
     current_user: Annotated[UserModel, Depends(get_current_user)],
     skip: int = 0, 
-    limit: int = 100, 
+    limit: int = 10, 
     document_service: DocumentService = Depends(init_document_service)
 ):
-    # documents = document_service.get_documents(current_user.id, skip, limit)
-    return current_user
-    # return documents
+    documents = document_service.get_documents(current_user.id, skip, limit)
+    return documents
 
 @router.post("/upload")
 async def upload_document(
