@@ -20,6 +20,12 @@ class DocumentTypeService:
         self.db.commit()
         return type
 
+    def get_single_type(self, user_id: int, doc_type_id: int):
+        type = self.db.query(DocumentTypeModel).filter(DocumentTypeModel.id == doc_type_id, DocumentTypeModel.user_id == user_id).first()
+        if not type:
+            raise HTTPException(status_code=404, detail="Document type not found")
+        return type
+
     def delete_type(self, user_id: int, doc_type_id: int):
         type = self.db.query(DocumentTypeModel).filter(DocumentTypeModel.id == doc_type_id, DocumentTypeModel.user_id == user_id).first()
         if not type:

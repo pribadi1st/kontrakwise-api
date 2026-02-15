@@ -24,10 +24,10 @@ class PineconeClient:
         """Get the Pinecone index"""
         return self.client.Index(self.index_name)
     
-    def upsert_vectors(self, vectors):
+    def upsert_vectors(self, vectors, namespace="default"):
         """Insert or update vectors in the index"""
         index = self.get_index()
-        return index.upsert(vectors=vectors)
+        return index.upsert(vectors=vectors, namespace=namespace)
     
     def query_vectors(self, query_vector, top_k=5, filter_dict=None):
         """Query for similar vectors"""

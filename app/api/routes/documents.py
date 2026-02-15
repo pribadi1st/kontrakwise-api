@@ -28,9 +28,10 @@ async def upload_document(
     current_user: Annotated[UserModel, Depends(get_current_user)],
     file: UploadFile = File(...),
     filename: str = Form(...),
+    document_type_id: int = Form(...),
     document_service: DocumentService = Depends(init_document_service),
 ):
-    await document_service.upload_document(current_user.id, file, filename)
+    await document_service.upload_document(current_user.id, file, filename, document_type_id)
     return {"detail": "success"}
 
 @router.get("/{document_id}/file", response_model=DocumentResponse)

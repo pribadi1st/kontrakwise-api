@@ -11,6 +11,10 @@ from app.core.pinecone_client import pinecone_client
 from app.models.documents import DocumentResponse
 from sqlalchemy import select
 from fastapi import HTTPException
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document as LCDocument
+from app.servies.document_type_service import DocumentTypeService
+
 
 class DocumentService:
     def __init__(self, db: Session = Depends(get_db)):
@@ -33,7 +37,12 @@ class DocumentService:
             raise HTTPException(status_code=404, detail="Document not found")
         return doc
 
-    async def upload_document(self, user_id: int, file: UploadFile, filename: str):
+    async def upload_document(self, user_id: int, file: UploadFile, filename: str, document_type_id: int):
+        document_type_service = DocumentTypeService(self.db)
+        document_type = document_type_service.get_single_type(user_id, document_type_id)
+        if not document_type:
+            raise HTTPException(status_code=404, detail="Document type not found")
+
         db_document = DocumentModel(
             user_id=user_id, 
             filename=filename, 
@@ -59,29 +68,50 @@ class DocumentService:
         return db_document
     
     def upload_to_pinecone(self, path: str, document_id: int, user_id: int):
-        text = ""
         doc = pymupdf.open(path)
+        namespace = f"user_{user_id}"
+        
+        raw_documents = []
         for page in doc:
-            text += page.get_text()
+            # Create a tiny object for each page that knows its page number
+            raw_documents.append(
+                LCDocument(
+                    page_content=page.get_text(),
+                    metadata={"page": page.number + 1} # PyMuPDF .number is 0-indexed
+                )
+            )
         
-        # Create embedding
-        embedding = embedding_client.create_embedding(text)
+        # 2. Smart Chunking (this will now preserve the metadata!)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=150,
+            separators=["\n\n", "\n", ".", " "]
+        )
         
-        # Prepare vector for Pinecone
-        vector_id = f"doc_{document_id}"
-        vector_data = {
-            "id": vector_id,
-            "values": embedding,
-            "metadata": {
-                "document_id": document_id,
-                "user_id": user_id,
-                "file_path": path,
-                "text_preview": text[:500]  # First 500 chars for preview
-            }
-        }
+        # .split_documents is smarter than .split_text
+        # If a chunk comes from Page 1, it keeps {"page": 1} in its metadata
+        chunks = text_splitter.split_documents(raw_documents)
         
-        # Upload to Pinecone
-        pinecone_client.upsert_vectors([vector_data])
+        # 2. Prepare Vectors in a List (Batching)
+        vectors_to_upsert = []
         
+        for i, chunk in enumerate(chunks):
+            embedding = embedding_client.create_embedding(chunk.page_content)
+            
+            vectors_to_upsert.append({
+                "id": f"doc_{document_id}_chunk_{i}",
+                "values": embedding,
+                "metadata": {
+                    "document_id": document_id,
+                    "user_id": user_id,
+                    "text": chunk.page_content, # The actual text
+                    "page": chunk.metadata["page"], # <--- THE PAGE NUMBER LIVES!
+                    "chunk_index": i
+                }
+            })
+        
+        # 3. Single Batch Upload (Much Faster)
+        # Pinecone handles up to 100-200 vectors per call comfortably
+        pinecone_client.upsert_vectors(vectors_to_upsert, namespace=namespace)
         
         

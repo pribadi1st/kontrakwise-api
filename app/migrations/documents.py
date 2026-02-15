@@ -8,6 +8,7 @@ class Document(Base):
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    document_type_id: Mapped[int] = mapped_column(Integer, ForeignKey("document_types.id", ondelete="SET NULL"), nullable=True)
     filename: Mapped[str] = mapped_column(String, nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))

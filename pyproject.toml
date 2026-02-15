@@ -20,4 +20,6 @@ dependencies = [
     "pinecone>=8.0.1",
     "pymupdf>=1.27.1",
     "google-genai>=1.63.0",
+    "langchain-text-splitters>=1.1.0",
+    "langchain-core>=1.2.13",
 ]

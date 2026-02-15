@@ -1,6 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, UploadFile, File, Form, Depends
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends
 from app.core.db import get_db
 from sqlalchemy.orm import Session
 from app.migrations.users import User as UserModel
