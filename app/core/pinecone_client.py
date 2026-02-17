@@ -1,3 +1,4 @@
+from os import name
 from pinecone import Pinecone, ServerlessSpec
 from app.core.config import settings
 
@@ -29,11 +30,12 @@ class PineconeClient:
         index = self.get_index()
         return index.upsert(vectors=vectors, namespace=namespace)
     
-    def query_vectors(self, query_vector, top_k=5, filter_dict=None):
+    def query_vectors(self, query_vector, top_k=5, filter_dict=None, namespace="default"):
         """Query for similar vectors"""
         index = self.get_index()
         return index.query(
             vector=query_vector,
+            namespace=namespace,
             top_k=top_k,
             filter=filter_dict,
             include_metadata=True

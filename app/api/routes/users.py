@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from app.api.guards import get_current_user
 from app.models.users import User as UserResponse, UserLoginModel, UserRegisterModel, UserEmailResponse
 from app.migrations.users import User as UserModel
-from app.servies.user_service import UserService
+from app.services.user_service import UserService
 from app.core.db import get_db
 from sqlalchemy.orm import Session
 from typing import Annotated

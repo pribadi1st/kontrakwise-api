@@ -6,14 +6,14 @@ from pathlib import Path
 import pymupdf
 
 from app.core.db import get_db
-from app.core.embedding_client import embedding_client
+from app.core.gemini_client import gemAI
 from app.core.pinecone_client import pinecone_client
 from app.models.documents import DocumentResponse
 from sqlalchemy import select
 from fastapi import HTTPException
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LCDocument
-from app.servies.document_type_service import DocumentTypeService
+from app.services.document_type_service import DocumentTypeService
 
 
 class DocumentService:
@@ -96,7 +96,7 @@ class DocumentService:
         vectors_to_upsert = []
         
         for i, chunk in enumerate(chunks):
-            embedding = embedding_client.create_embedding(chunk.page_content)
+            embedding = gemAI.create_embedding(chunk.page_content)
             
             vectors_to_upsert.append({
                 "id": f"doc_{document_id}_chunk_{i}",

@@ -5,7 +5,7 @@ from app.core.db import get_db
 from sqlalchemy.orm import Session
 from app.migrations.users import User as UserModel
 from app.api.guards import get_current_user
-from app.servies.documents_service import DocumentService
+from app.services.documents_service import DocumentService
 from app.models.documents import DocumentResponse
 
 router = APIRouter()

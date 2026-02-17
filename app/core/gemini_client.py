@@ -1,8 +1,10 @@
+import time
 from google import genai
 from app.core.config import settings
+
 from typing import List
 
-class EmbeddingClient:
+class GeminiAI:
     def __init__(self):
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
         self.model = "gemini-embedding-001"
@@ -30,5 +32,28 @@ class EmbeddingClient:
         """Get the dimension of the embedding model"""
         return 1536  # text-embedding-3-small dimension
 
+    def generate_content(self, prompt: str) -> str:
+        """Generate content using Gemini"""
+        max_retries = 3
+        retry_delay = 1 # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"Generating content for prompt")
+                response = self.client.models.generate_content(
+                    model="gemini-3-flash-preview",
+                    contents=prompt
+                )
+                
+                return response.text
+                
+            except Exception as e:
+                print(f"Error generating content: {str(e), type(e)}")
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 1s, 2s, 4s
+                    time.sleep(retry_delay * (2 ** attempt))
+                    continue
+                raise Exception(f"Failed to generate AI response: {str(e)}")
+
 # Global instance
-embedding_client = EmbeddingClient()
+gemAI = GeminiAI()
