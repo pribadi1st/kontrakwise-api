@@ -1,3 +1,4 @@
+import json
 from app.core.gemini_client import gemAI
 from app.core.pinecone_client import pinecone_client
 from app.services.documents_service import DocumentService
@@ -106,4 +107,111 @@ class ChatService():
             }
         except Exception as e:
             raise Exception(f"Failed to generate AI response: {str(e)}")
+    
+    def generate_response_for_single_doc_stream(self, user_id: int, request: ChatRequest):
+        """Generate streaming response for single document query"""
+        document_service = DocumentService(self.db)
+        document_service.get_document_detail(user_id, request.document_id)
+        
+        query_vector = self.gemAI.create_embedding(request.query)
+        
+        metadata_filter = {
+            "document_id": request.document_id,
+        }
+        namespace_pin = f"user_{user_id}"
+
+        search_results = self.pinecone_client.query_vectors(
+            query_vector=query_vector,
+            filter_dict=metadata_filter,
+            namespace=namespace_pin
+        )
+        
+        context_parts = []
+        
+        for res in search_results.matches:
+            content = res.metadata.get("text", "")
+            page = res.metadata.get("page", "?")
+            context_parts.append(f"[Source: Page {page}]\n{content}")
+
+        context_text = "\n\n".join(context_parts)
+
+        prompt = f"""
+        You are the Kontrakwise AI. Use the provided context to answer the question.
+
+        REASONING INSTRUCTIONS:
+        1. If the user asks about something NOT mentioned (like gym memberships or lunch money), 
+        explicitly state: "The contract is silent on this matter."
+        2. If the user asks for a calculation (like a notice period), find the relevant 
+        clause and apply it to their situation.
+        3. If the user asks for legal advice, clarify that you are an AI assistant to help analyze the document, not a lawyer.
+
+        STRICT RULES:
+        1. Base your answer ONLY on the context.
+        2. If the user asks a question that cannot be answered using the provided CONTEXT (e.g., general knowledge, politics, or other documents), you must politely decline to answer.
+        3. Say: "I'm sorry, but I can only answer questions based on the provided legal document. I don't have information regarding [User's Topic]."
+        4. For every source used, identify the EXACT sentence or short paragraph that contains the evidence. If consecutive sentences are relevant, group them into a single citation.
+        5. Return your response in this EXACT format:
+        
+        ANSWER: [Your professional legal answer here]
+        ---
+        EVIDENCE:
+        - Page [Number]: "[Exact sentence from text]"
+        - Page [Number]: "[Exact sentence from text]"
+
+        CONTEXT:
+        {context_text}
+
+        QUESTION: 
+        {request.query}
+        """
+
+        try:
+            # Send initial event to indicate streaming started
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting response generation'})}\n\n"
+            
+            full_response = ""
+            
+            # Stream the content generation
+            for chunk in self.gemAI.generate_content_stream(prompt):
+                if chunk:
+                    full_response += chunk
+                    # Send each chunk as SSE
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+            
+            # Parse the complete response to extract answer and evidence
+            parts = full_response.split("---")
+            answer_text = parts[0].replace("ANSWER:", "").strip()
+            
+            # Parse evidence if available
+            citation_array = []
+            if len(parts) > 1:
+                evidence_text = parts[1].replace("EVIDENCE:", "").strip()
+                if evidence_text.strip():
+                    evidence_lines = [line.strip() for line in evidence_text.split('\n') if line.strip()]
+                    for line in evidence_lines:
+                        if line.startswith('- Page'):
+                            page_match = line.split('Page')[1].split(':')[0].strip()
+                            quote_start = line.find('"') + 1
+                            quote_end = line.rfind('"')
+                            quote = line[quote_start:quote_end] if quote_start > 0 and quote_end > quote_start else ""
+                            
+                            citation_array.append({
+                                "page": page_match,
+                                "text": quote
+                            })
+            
+            # Send final event with complete structured response
+            final_data = {
+                'type': 'complete',
+                'answer': answer_text,
+                'citations': citation_array
+            }
+            yield f"data: {json.dumps(final_data)}\n\n"
+            
+        except Exception as e:
+            error_data = {
+                'type': 'error',
+                'message': f"Failed to generate AI response: {str(e)}"
+            }
+            yield f"data: {json.dumps(error_data)}\n\n"
         

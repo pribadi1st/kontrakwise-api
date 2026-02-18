@@ -54,6 +54,23 @@ class GeminiAI:
                     time.sleep(retry_delay * (2 ** attempt))
                     continue
                 raise Exception(f"Failed to generate AI response: {str(e)}")
+    
+    def generate_content_stream(self, prompt: str):
+        """Generate streaming content using Gemini"""
+        try:
+            print(f"Starting streaming content generation")
+            response = self.client.models.generate_content_stream(
+                model="gemini-3-flash-preview",
+                contents=prompt
+            )
+            
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+                    
+        except Exception as e:
+            print(f"Error in streaming content generation: {str(e)}")
+            raise Exception(f"Failed to generate streaming AI response: {str(e)}")
 
 # Global instance
 gemAI = GeminiAI()
