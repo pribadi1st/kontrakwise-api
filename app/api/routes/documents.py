@@ -52,3 +52,13 @@ def get_document(
     doc = document_service.get_document_detail(current_user.id, document_id)
     path = f"./{doc.file_path}"
     return FileResponse(path=path, media_type="application/pdf", filename=doc.filename)
+
+@router.delete("/{document_id}")
+def delete_document(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    document_id: int,
+    document_service: DocumentService = Depends(init_document_service)
+):
+    document_service.delete_document(current_user.id, document_id)
+    return {"detail": "success"}
+

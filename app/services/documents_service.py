@@ -113,5 +113,23 @@ class DocumentService:
         # 3. Single Batch Upload (Much Faster)
         # Pinecone handles up to 100-200 vectors per call comfortably
         pinecone_client.upsert_vectors(vectors_to_upsert, namespace=namespace)
+    
+    def delete_document(self, user_id: int, document_id: int):
+        doc = self.db.query(DocumentModel).filter(
+            DocumentModel.user_id == user_id,
+            DocumentModel.id == document_id
+        ).first()
+        doc_path = doc.file_path
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        self.db.delete(doc)
+        self.db.commit()
         
+        # Delete from Pinecone
+        pinecone_client.delete_vectors(f"user_{user_id}", {"document_id": document_id})
+
+        # Delete file
+        import os
+        os.remove(doc_path)
         
+        return {"detail": "success"}

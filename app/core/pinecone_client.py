@@ -41,10 +41,10 @@ class PineconeClient:
             include_metadata=True
         )
     
-    def delete_vectors(self, vector_ids):
+    def delete_vectors(self, namespace, filter_dict=None):
         """Delete vectors by ID"""
         index = self.get_index()
-        return index.delete(ids=vector_ids)
+        return index.delete(namespace=namespace, filter=filter_dict)
 
 # Global instance
 pinecone_client = PineconeClient()
