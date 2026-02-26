@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.migrations.users import User as UserModel
 from app.api.guards import get_current_user
 from app.services.document_type_service import DocumentTypeService
-from app.models.document_types import DocumentCreateModel
+from app.models.document_types import DocumentCreateModel, DocumentUpdateModel
 
 router = APIRouter()
 
@@ -28,7 +28,17 @@ def add_types(
     body: DocumentCreateModel,
     document_type_service: DocumentTypeService = Depends(init_document_type_service),
 ):
-    document_type_service.add_types(current_user.id, body.name)
+    document_type_service.add_types(current_user.id, body)
+    return {"detail": "success"}
+
+@router.put("/{id}")
+def update_types(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    id: int,
+    body: DocumentUpdateModel,
+    document_type_service: DocumentTypeService = Depends(init_document_type_service),
+):
+    document_type_service.update_type(current_user.id, id, body)
     return {"detail": "success"}
 
 @router.delete("/{id}")
