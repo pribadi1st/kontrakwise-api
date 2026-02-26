@@ -14,6 +14,8 @@ class Document(Base):
     # Progress: extracting => analyzing => completed
     ai_progress: Mapped[str] = mapped_column(String, nullable=False, default="pending")
     summary: Mapped[str] = mapped_column(String, nullable=True)
+    risk_level: Mapped[str] = mapped_column(String, nullable=True)
+    risk_reasoning: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 

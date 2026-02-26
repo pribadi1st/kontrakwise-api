@@ -2,13 +2,16 @@ import shutil
 from sqlalchemy.orm import Session
 from fastapi import Depends, UploadFile
 from app.migrations.documents import Document as DocumentModel
+from app.migrations.document_type import DocumentType as DocumentTypeModel
 from pathlib import Path
+from app.utils.prompt import get_summarization_prompt
 import pymupdf
+import json
 
 from app.core.db import get_db
 from app.core.gemini_client import gemAI
 from app.core.pinecone_client import pinecone_client
-from app.models.documents import DocumentResponse, DocumentDetailResponse
+from app.models.documents import DocumentResponse, DocumentDetailResponse, DocumentSummarizationModel
 from app.models.document_types import DocumentTypeRelationResponse
 from sqlalchemy import select
 from fastapi import HTTPException
@@ -42,6 +45,86 @@ class DocumentService:
             ) if doc.document_type else None
         ) for doc in result]
 
+    async def sync_document(self, user_id: int, document_id: int):
+        doc = self.db.query(DocumentModel).join(DocumentModel.document_type).filter(
+            DocumentModel.user_id == user_id,
+            DocumentModel.id == document_id
+        ).first()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        # end status is completed
+        progress_status = ["pending", "extracted", "summarized"]
+        # Check status
+        if doc.ai_progress not in progress_status:
+            raise HTTPException(status_code=400, detail="Document is already processed")
+        for index in enumerate(progress_status):
+            match doc.ai_progress:
+                case "pending":
+                    try:
+                        await self.upload_to_pinecone(path=doc.file_path, document_id=doc.id, user_id=user_id)
+                        # Change status to extracted
+                        doc.ai_progress = "extracted"
+                        self.db.commit()
+                    except Exception as e:
+                        raise HTTPException(status_code=500, detail=str(e))
+                case "extracted":
+                    try:
+                        summary_result = await self.summarize_document(document_type= doc.document_type, doc_path=doc.file_path)
+                        # Parse JSON response
+                        try:
+                            # Strip markdown code block wrapper if present
+                            if summary_result.startswith('```json'):
+                                # Remove ```json at start and ``` at end
+                                summary_result = summary_result[7:-3].strip()
+                            elif summary_result.startswith('```'):
+                                # Remove generic code block wrapper
+                                summary_result = summary_result[3:-3].strip()
+                            
+                            parsed_result = json.loads(summary_result)
+                            print("parsed result:", parsed_result)
+                            doc.summary = parsed_result.get('summary', summary_result)
+                            # Validate risk_level is one of the allowed values
+                            risk_level = parsed_result.get('risk_level', 'low').lower()
+                            doc.risk_level = risk_level
+                            doc.risk_reasoning = parsed_result.get('risk_reasoning', '')
+                        except json.JSONDecodeError as e:
+                            # Fallback if JSON parsing fails
+                            print("JSON decode error:", e)
+                            print("Problematic JSON:", repr(summary_result))
+                            doc.summary = summary_result
+                            doc.risk_level = 'low'
+                            doc.risk_reasoning = ''
+                        except Exception as e:
+                            # Catch any other errors
+                            print("Unexpected error:", type(e).__name__, str(e))
+                            doc.summary = summary_result
+                            doc.risk_level = 'low'
+                            doc.risk_reasoning = ''
+                        # Change status to summarized
+                        doc.ai_progress = "summarized"
+                        self.db.commit()
+                    except Exception as e:
+                        raise HTTPException(status_code=500, detail=str(e))
+                case "summarized":
+                    break
+
+        return
+
+    async def summarize_document(self, document_type: DocumentTypeModel, doc_path: str):
+        
+        # Parse risk rules from JSON
+        risk_rules = json.loads(document_type.risk_rules) if document_type.risk_rules else []
+        
+        # Generate the proper prompt using the template
+        prompt = get_summarization_prompt(
+            document_type_name=document_type.name,
+            document_type_description=document_type.description or "",
+            list_of_rules=risk_rules
+        )
+        
+        gem_ai_response = await gemAI.generate_context_with_file(doc_path, prompt, DocumentSummarizationModel)
+        return gem_ai_response
+
     def get_document_detail(self, user_id: int, document_id: int):
         doc = self.db.query(DocumentModel).filter(
             DocumentModel.user_id == user_id,
@@ -56,6 +139,8 @@ class DocumentService:
             ai_progress=doc.ai_progress,
             summary=doc.summary,
             file_path=doc.file_path,
+            risk_level=doc.risk_level,
+            risk_reasoning=doc.risk_reasoning
         )
         return resp
 

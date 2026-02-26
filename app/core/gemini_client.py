@@ -35,7 +35,7 @@ class GeminiAI:
         """Get the dimension of the embedding model"""
         return 1536  # text-embedding-3-small dimension
 
-    async def generate_context_with_file(self, file_path: str, prompt: str) -> str:
+    async def generate_context_with_file(self, file_path: str, prompt: str, model=None) -> str:
         """Generate context with file using Gemini"""
         document = pathlib.Path(file_path)
         
@@ -50,12 +50,20 @@ class GeminiAI:
         for attempt in range(max_retries):
             try:
                 print(f"Generating context with file: {file_path} (attempt {attempt + 1}/{max_retries})")
-                response = self.client.models.generate_content(  # Removed await
-                    model="gemini-2.5-flash",
-                    contents=[
-                        doc_gfile,
-                        prompt]
-                )
+                # Build generation parameters
+                generation_params = {
+                    "model": "gemini-2.5-flash",
+                    "contents": [doc_gfile, prompt]
+                }
+                
+                # Add config only if model is provided
+                if model:
+                    generation_params["config"] = {
+                        "response_mime_type": "application/json",
+                        "response_json_schema": model.model_json_schema()
+                    }
+                
+                response = self.client.models.generate_content(**generation_params)
                 
                 # Store result and break on success
                 result = response.text

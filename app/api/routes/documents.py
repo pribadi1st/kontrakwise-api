@@ -53,6 +53,15 @@ def get_document(
     path = f"./{doc.file_path}"
     return FileResponse(path=path, media_type="application/pdf", filename=doc.filename)
 
+@router.get("/{document_id}/sync")
+async def sync_document(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    document_id: int,
+    document_service: DocumentService = Depends(init_document_service)
+):
+    await document_service.sync_document(current_user.id, document_id)
+    return {"detail": "success"}
+
 @router.delete("/{document_id}")
 def delete_document(
     current_user: Annotated[UserModel, Depends(get_current_user)],
