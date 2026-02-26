@@ -14,6 +14,7 @@ class DocumentResponse(BaseModel):
     created_at: datetime
     document_type: Optional['DocumentTypeResponse'] = None
     ai_progress: Optional[str] = "Pending"
+    summary: Optional[str]= None
     
     class Config:
         from_attributes = True

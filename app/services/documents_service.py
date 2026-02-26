@@ -36,6 +36,7 @@ class DocumentService:
             filename=doc.filename, 
             created_at=doc.created_at,
             ai_progress= doc.ai_progress,
+            summary=doc.summary,
             document_type=DocumentTypeRelationResponse(
                 id=doc.document_type.id,
                 name=doc.document_type.name,
