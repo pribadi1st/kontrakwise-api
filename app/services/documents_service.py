@@ -2,6 +2,7 @@ import shutil
 from sqlalchemy.orm import Session
 from fastapi import Depends, UploadFile
 from app.migrations.documents import Document as DocumentModel
+from app.migrations.document_type import DocumentType as DocumentTypeModel
 from pathlib import Path
 import pymupdf
 
@@ -9,6 +10,7 @@ from app.core.db import get_db
 from app.core.gemini_client import gemAI
 from app.core.pinecone_client import pinecone_client
 from app.models.documents import DocumentResponse
+from app.models.document_types import DocumentTypeRelationResponse
 from sqlalchemy import select
 from fastapi import HTTPException
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -22,11 +24,23 @@ class DocumentService:
         self.upload_path = Path("./storage")
 
     def get_documents(self, user_id: int, skip: int = 0, limit: int = 100):
-        stmt = select(DocumentModel.id, DocumentModel.filename, DocumentModel.created_at).filter(
+        from sqlalchemy.orm import joinedload
+        stmt = select(DocumentModel).options(
+            joinedload(DocumentModel.document_type)
+        ).filter(
             DocumentModel.user_id == user_id
         ).limit(limit).offset(skip)
-        result = self.db.execute(stmt).all()
-        return [DocumentResponse(id=row.id, filename=row.filename, created_at=row.created_at) for row in result]
+        result = self.db.execute(stmt).scalars().all()
+        return [DocumentResponse(
+            id=doc.id, 
+            filename=doc.filename, 
+            created_at=doc.created_at,
+            ai_progress= doc.ai_progress,
+            document_type=DocumentTypeRelationResponse(
+                id=doc.document_type.id,
+                name=doc.document_type.name,
+            ) if doc.document_type else None
+        ) for doc in result]
 
     def get_document_detail(self, user_id: int, document_id: int):
         doc = self.db.query(DocumentModel).filter(
@@ -46,7 +60,8 @@ class DocumentService:
         db_document = DocumentModel(
             user_id=user_id, 
             filename=filename, 
-            file_path="temp" # Placeholder
+            file_path="temp", # Placeholder,
+            document_type_id=document_type_id
         )
         self.db.add(db_document)
         self.db.flush()

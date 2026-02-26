@@ -5,11 +5,15 @@ from typing import Optional, Literal
 class DocumentTypeResponse(BaseModel):
     id: int
     name: str
-    description: str
+    description: Optional[str] = None
     risk_rules: Optional[list[dict]] = None
     
     class Config:
         from_attributes = True
+
+class DocumentTypeRelationResponse(BaseModel):
+    id: int
+    name: str
 
 class DocumentRiskLevel(BaseModel):
     clause: str

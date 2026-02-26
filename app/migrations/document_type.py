@@ -1,5 +1,5 @@
 from sqlalchemy import String, Integer, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 class DocumentType(Base):
@@ -10,3 +10,5 @@ class DocumentType(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=True)
     risk_rules: Mapped[str] = mapped_column(String, nullable=True)
+    
+    documents = relationship("Document", back_populates="document_type")
