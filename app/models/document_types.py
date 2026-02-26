@@ -14,6 +14,10 @@ class DocumentTypeResponse(BaseModel):
 class DocumentTypeRelationResponse(BaseModel):
     id: int
     name: str
+    risk_rules: Optional[list[dict]] = None
+    
+    class Config:
+        from_attributes = True
 
 class DocumentRiskLevel(BaseModel):
     clause: str

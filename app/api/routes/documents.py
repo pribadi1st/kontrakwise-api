@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.migrations.users import User as UserModel
 from app.api.guards import get_current_user
 from app.services.documents_service import DocumentService
-from app.models.documents import DocumentResponse
+from app.models.documents import DocumentDetailResponse
 
 router = APIRouter()
 
@@ -34,7 +34,7 @@ async def upload_document(
     await document_service.upload_document(current_user.id, file, filename, document_type_id)
     return {"detail": "success"}
 
-@router.get("/{document_id}/file", response_model=DocumentResponse)
+@router.get("/{document_id}/file", response_model=DocumentDetailResponse)
 def get_document(
     current_user: Annotated[UserModel, Depends(get_current_user)],
     document_id: int,

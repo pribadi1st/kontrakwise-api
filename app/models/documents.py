@@ -18,3 +18,12 @@ class DocumentResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class DocumentDetailResponse(BaseModel):
+    id: int
+    filename: str
+    created_at: datetime
+    document_type: Optional['DocumentTypeResponse'] = None
+    ai_progress: Optional[str] = "Pending"
+    summary: Optional[str]= None
+    file_path: str

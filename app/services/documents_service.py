@@ -2,14 +2,13 @@ import shutil
 from sqlalchemy.orm import Session
 from fastapi import Depends, UploadFile
 from app.migrations.documents import Document as DocumentModel
-from app.migrations.document_type import DocumentType as DocumentTypeModel
 from pathlib import Path
 import pymupdf
 
 from app.core.db import get_db
 from app.core.gemini_client import gemAI
 from app.core.pinecone_client import pinecone_client
-from app.models.documents import DocumentResponse
+from app.models.documents import DocumentResponse, DocumentDetailResponse
 from app.models.document_types import DocumentTypeRelationResponse
 from sqlalchemy import select
 from fastapi import HTTPException
@@ -50,7 +49,15 @@ class DocumentService:
         ).first()
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
-        return doc
+        resp = DocumentDetailResponse(
+            id=doc.id,
+            filename=doc.filename,
+            created_at=doc.created_at,
+            ai_progress=doc.ai_progress,
+            summary=doc.summary,
+            file_path=doc.file_path,
+        )
+        return resp
 
     async def upload_document(self, user_id: int, file: UploadFile, filename: str, document_type_id: int):
         document_type_service = DocumentTypeService(self.db)
