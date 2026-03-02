@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.ai_analysis import AIAnalysisDTO, AIListRules, AIAnalysisResult
@@ -22,10 +22,6 @@ class AIAnalysisService:
                 raise ValueError(f"Document with ID {document_id} not found")
             prompt = get_analysis_prompt(analysis_dto)
             response = await gemAI.generate_context_with_file(document.file_path, prompt, AIAnalysisResult)
-            print("response")
-            print("*"*10)
-            print(response)
-            print("*"*10)
             return json.loads(response)
             
         except Exception as e:

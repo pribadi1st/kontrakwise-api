@@ -27,8 +27,8 @@ class DocumentDetailResponse(BaseModel):
     ai_progress: Optional[str] = "Pending"
     summary: Optional[str]= None
     file_path: str
-    risk_level: str
-    risk_reasoning: str
+    risk_level: Optional[str] = None
+    risk_reasoning: Optional[str] = None
 
 class DocumentSummarizationModel(BaseModel):
     summary: str = Field(description="1-paragraph summary of the document including parties and core purpose.")
